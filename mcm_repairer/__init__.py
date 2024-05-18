@@ -1,1 +1,1 @@
-from .main import exported_method
+from .main import repair_model
