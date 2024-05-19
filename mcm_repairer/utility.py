@@ -1,4 +1,4 @@
-from os.path import basename
+from os.path import split, splitext, join, exists
 
 
 def safe_access(matrix, i, j, default=False):
@@ -17,5 +17,20 @@ def safe_dict_setter(matrix, i, j, value):
         matrix[i] = {j: value}
 
 
-def get_file_name(file_path):
-    return basename(file_path)
+def add_prefix_if_exists(file_path, prefix="mcm_result_"):
+    # Split the directory, base name, and extension
+    dir_name, base_name = split(file_path)
+    file_name, ext = splitext(base_name)
+
+    # Initialize a counter for the prefix number
+    counter = 1
+    new_file_path = join(dir_name, prefix + file_name + ext)
+
+    # Loop until a unique file name is found
+    while exists(new_file_path):
+        # Create a new file name with the prefix and counter
+        new_file_name = f"{prefix}{counter}_{file_name}{ext}"
+        new_file_path = join(dir_name, new_file_name)
+        counter += 1
+
+    return new_file_path

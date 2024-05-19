@@ -8,15 +8,18 @@ from OCC.Core.StlAPI import StlAPI_Writer
 def load_stl(file_path: str) -> list[Geometry]:
     if not isfile(file_path):
         raise ValueError(f"File does not exist: {file_path}")
-    mesh: Geometry = load_mesh(file_path, "stl")
-    meshes: list[Geometry] = mesh.split(only_watertight=True)
-    return meshes
+    mesh = load_mesh(file_path, "stl")
+
+    if isinstance(mesh, list):
+        return mesh
+    else:
+        return mesh.split(only_watertight=True)  # type: ignore
 
 
-def export_to_stl(shape, filename, ascii_mode=False):
+def export_to_stl(shape, file_path, ascii_mode=False):
     writer = StlAPI_Writer()
     writer.SetASCIIMode(ascii_mode)
-    if writer.Write(shape, filename):
-        print(f"Successfully exported to {filename}")
+    if writer.Write(shape, file_path):
+        print(f"Successfully exported to {file_path}")
     else:
-        raise ValueError(f"Failed to export to {filename}")
+        raise ValueError(f"Failed to export to {file_path}")

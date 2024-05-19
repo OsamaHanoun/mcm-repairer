@@ -8,6 +8,7 @@ from OCC.Core.BRepBuilderAPI import (
 from OCC.Core.gp import gp_Pnt
 from OCC.Core.TopoDS import TopoDS_Compound
 from OCC.Core.TopoDS import TopoDS_Shape, TopoDS_Solid, topods_Shell
+from OCC.Core.BRepMesh import BRepMesh_IncrementalMesh
 
 
 def create_faces_from_polygons(
@@ -50,3 +51,28 @@ def sew_compound_faces(faces_compound: TopoDS_Compound) -> TopoDS_Shape:
     sewer.Perform()
     sewed_shell = sewer.SewedShape()
     return sewed_shell
+
+
+def convert_shape_to_mesh(shape, linear_deflection=1, angular_deflection=1):
+    mesh = BRepMesh_IncrementalMesh(
+        shape,
+        linear_deflection,
+        False,
+        angular_deflection,
+        False,
+    )
+    mesh.Perform()
+
+    if not mesh.IsDone():
+        raise Exception("Meshing failed.")
+
+    return mesh
+
+
+def create_compound(shape_list):
+    compound = TopoDS_Compound()
+    builder = BRep_Builder()
+    builder.MakeCompound(compound)
+    for solid in shape_list:
+        builder.Add(compound, solid)
+    return compound
