@@ -1,5 +1,10 @@
 {
-  "cSpell.words": ["Topo"],
+  "cSpell.words": [
+    "brepbndlib",
+    "Topo",
+    "unoverlapped"
+  ],
   "editor.formatOnSave": true,
-  "editor.defaultFormatter": "charliermarsh.ruff"
+  "editor.defaultFormatter": "charliermarsh.ruff",
+  "python.analysis.typeCheckingMode": "standard"
 }
