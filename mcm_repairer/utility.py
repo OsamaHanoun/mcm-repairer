@@ -29,7 +29,7 @@ def add_prefix_if_exists(file_path, prefix="mcm_result_"):
     # Loop until a unique file name is found
     while exists(new_file_path):
         # Create a new file name with the prefix and counter
-        new_file_name = f"{prefix}{counter}_{file_name}{ext}"
+        new_file_name = f"{prefix}{file_name}_{counter}{ext}"
         new_file_path = join(dir_name, new_file_name)
         counter += 1
 
