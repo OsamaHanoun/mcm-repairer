@@ -8,7 +8,7 @@ from mcm_repairer.geometry_generator import (
 from mcm_repairer.solid_operations import remove_overlaps_from_solids
 
 
-def repair_model(file_path):
+def repair_model(file_path, cover_thickness: float):
     meshes = load_stl(file_path)
     solid_list = []
 
@@ -16,7 +16,7 @@ def repair_model(file_path):
         solid = create_solid_from_polygons(mesh.faces, mesh.vertices)  # type: ignore
         solid_list.append(solid)
 
-    unoverlapped_shape_list = remove_overlaps_from_solids(solid_list)
+    unoverlapped_shape_list = remove_overlaps_from_solids(solid_list, cover_thickness)
 
     for shape in unoverlapped_shape_list:
         convert_shape_to_mesh(shape)

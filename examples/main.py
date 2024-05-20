@@ -7,8 +7,8 @@ from mcm_repairer.main import repair_model
 
 
 def main():
-    file_path = os.path.join(os.path.dirname(__file__), "model.stl")
-    repair_model(file_path)
+    file_path = os.path.join(os.path.dirname(__file__), "mode_cover.stl")
+    repair_model(file_path, 1)
 
 
 if __name__ == "__main__":
