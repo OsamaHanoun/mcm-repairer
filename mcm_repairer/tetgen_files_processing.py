@@ -1,8 +1,7 @@
 import trimesh
 import numpy as np
 from os.path import split, splitext, join
-from mcm_repairer.file_io import load_stl
-from mcm_repairer.utility import add_prefix_if_exists
+from mcm_repairer.file_io import load_stl, export_mesh_list
 
 
 def parse_skipped_faces(faces_file_path):
@@ -67,13 +66,6 @@ def remove_filtered_meshes(original_meshes, filtered_meshes):
     # Create a new list excluding the filtered meshes
     remaining_meshes = [mesh for mesh in original_meshes if mesh not in filtered_set]
     return remaining_meshes
-
-
-def export_mesh_list(mesh_list, file_path, file_name_prefix):
-    combined_filtered_mesh = trimesh.util.concatenate(mesh_list)
-    export_path = add_prefix_if_exists(file_path, file_name_prefix)
-    combined_filtered_mesh.export(export_path)  # type: ignore
-    print("exported to " + file_path)
 
 
 def write_failed_meshes(file_path):

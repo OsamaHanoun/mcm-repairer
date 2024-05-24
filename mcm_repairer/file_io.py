@@ -1,6 +1,7 @@
-from trimesh import Geometry, load_mesh
+from trimesh import Geometry, load_mesh, util
 from os.path import isfile
 from OCC.Core.StlAPI import StlAPI_Writer
+from mcm_repairer.utility import add_prefix_if_exists
 
 # TODO: replace trimesh with OCC.Core.RWStl in order to remove trimesh and scipy. OCC.Core.RWStl does not split a mesh so a mesh splitter method needs no be implemented.
 
@@ -23,3 +24,10 @@ def export_to_stl(shape, file_path, ascii_mode=False):
         print(f"Successfully exported to {file_path}")
     else:
         raise ValueError(f"Failed to export to {file_path}")
+
+
+def export_mesh_list(mesh_list, file_path, file_name_prefix):
+    combined_filtered_mesh = util.concatenate(mesh_list)
+    export_path = add_prefix_if_exists(file_path, file_name_prefix)
+    combined_filtered_mesh.export(export_path)  # type: ignore
+    print("exported to " + file_path)
