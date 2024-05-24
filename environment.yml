@@ -1,9 +1,15 @@
 name: mcm_repairer
 channels:
   - conda-forge
+  - defaults
 dependencies:
   - python=3.11
   - pythonocc-core==7.7.0
   - scipy==1.13.0
   - trimesh==4.3.2
   - networkx==3.3
+  - rtree==1.2
+  - pip
+  - pip:
+    - python-fcl==0.7
+    - manifold3d==2.4.5
