@@ -8,9 +8,9 @@ from mcm_repairer.mesh_repairer import repair
 
 
 def main():
-    file_path = os.path.join(os.path.dirname(__file__), "sample_size_100.stl")
+    file_path = os.path.join(os.path.dirname(__file__), "sample_size_50.stl")
     # write_failed_meshes(file_path)
-    repair(file_path, 0.2, 0.3, 10)
+    repair(file_path, 0.4, 0.5, 2)
 
 
 if __name__ == "__main__":

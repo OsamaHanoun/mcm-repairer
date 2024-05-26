@@ -1,5 +1,5 @@
 from mcm_repairer.file_io import load_stl, export_mesh_list
-
+from mcm_repairer.overlap_scale_finder import find_no_overlap
 from decimal import Decimal
 from time import time
 import numpy as np
@@ -7,21 +7,30 @@ import numpy as np
 from trimesh.points import PointCloud
 from trimesh import constants, Trimesh
 from trimesh.collision import CollisionManager
-from trimesh.proximity import ProximityQuery
+
+empty_mesh = Trimesh(vertices=[], faces=[])
 
 
 def calculate_total_volume(mesh_list):
     return sum(mesh.volume for mesh in mesh_list)
 
 
-def create_scaled_mesh_to_shift(mesh, size_shift):
-    scale_factor = 1 + (size_shift / mesh.extents.max())
-    scaled_mesh = mesh.copy()
-    scaled_mesh.apply_scale(scale_factor)
-    translation_vector = mesh.centroid - scaled_mesh.centroid
-    scaled_mesh.apply_translation(translation_vector)
+def create_scaled_mesh_by_shift(mesh, expansion_distance):
+    centroid = mesh.centroid
+    vertices = mesh.vertices
+    directions = vertices - centroid
+    norms = np.linalg.norm(directions, axis=1).reshape(-1, 1)
 
-    return scaled_mesh
+    # Avoid division by zero for vertices exactly at the centroid
+    norms[norms == 0] = 1
+
+    directions_normalized = directions / norms
+    new_vertices = vertices + directions_normalized * expansion_distance
+
+    # Create a new mesh from the new vertices using the convex hull
+    new_mesh = Trimesh(vertices=new_vertices)
+
+    return new_mesh.convex_hull
 
 
 def create_scaled_mesh_to_volume(mesh, target_volume):
@@ -52,7 +61,7 @@ def create_scaled_mesh_list(mesh_list, size_shift):
         return mesh_list.copy()
 
     for mesh in mesh_list:
-        scaled_mesh = create_scaled_mesh_to_shift(mesh, size_shift)
+        scaled_mesh = create_scaled_mesh_by_shift(mesh, size_shift)
         scaled_mesh_list.append(scaled_mesh)
 
     return scaled_mesh_list
@@ -74,13 +83,16 @@ def repair_scaled_meshes(mesh_dict, scaled_mesh_key_list, merge_tol):
         constants.tol.merge = merge_tol
         cloud = merge_close_vertices(mesh.vertices)
         constants.tol.merge = stored_tol
-        mesh_dict[key] = cloud.convex_hull
+        mesh_dict[key] = (
+            cloud.convex_hull if len(cloud.vertices) >= 4 else empty_mesh.copy()
+        )
 
 
 def ensure_min_gap(
     intersected_pairs_list, mesh_dict, scaled_mesh_list, min_gap, min_volume
 ):
     scaled_mesh_key_set = set()
+
     for i, j in intersected_pairs_list:
         mesh_i = mesh_dict[i]
         mesh_j = mesh_dict[j]
@@ -89,7 +101,6 @@ def ensure_min_gap(
             continue
 
         larger_mesh_key = i if is_mesh_larger(mesh_i, mesh_j) else j
-        larger_mesh = mesh_dict[larger_mesh_key]
         larger_scaled_mesh = scaled_mesh_list[larger_mesh_key]
 
         smaller_mesh_key = j if i == larger_mesh_key else i
@@ -101,53 +112,23 @@ def ensure_min_gap(
         if common_scaled_mesh.is_empty:
             continue
 
-        # case 2 : has intersection using original mesh -> remove overlap and ensure minimum gap
-        # case 2.a : the centroid of the smaller mesh is inside the larger mesh -> no scaling could ensure the minimum gap -> sol.1-Todo : scale the larger mesh (can lead to lower volume fraction ) or  sol.2: just remove the smaller mesh (Todo: ensure not both of the meshes will be deleted later on).
-        # case 2.b : the centroid of the smaller mesh is outside the larger mesh -> scale the smaller mesh by finding the distance between its centroid and the common mesh.
-        # case 2.c : the centroid of the larger mesh is inside the smaller mesh -> just remove the smaller mesh (Todo: ensure not both of the meshes will be deleted later on).
-        # case 3 :has intersection using scaled mesh only  ->  ensure minimum gap
+        # case 2 : has intersection -> remove overlap and ensure minimum gap
 
-        common_original_mesh = larger_mesh.intersection(smaller_mesh)
+        _, non_overlapping_mesh = find_no_overlap(
+            smaller_mesh, common_scaled_mesh.copy(), min_volume
+        )
 
-        if common_original_mesh.is_empty:
-            pq_larger_mesh = ProximityQuery(larger_mesh)
-            vertices = common_scaled_mesh.vertices
-            min_distance = pq_larger_mesh.signed_distance(vertices).min()
-            shrinkage_size_shift = min_distance - min_gap
-            scaled_mesh = create_scaled_mesh_to_shift(
-                smaller_mesh, shrinkage_size_shift
-            )
+        if non_overlapping_mesh is None:
+            mesh_dict[smaller_mesh_key] = empty_mesh
+            scaled_mesh_list[smaller_mesh_key] = empty_mesh
         else:
-            scaled_mesh = create_scaled_mesh_to_volume(smaller_mesh, min_volume)
+            mesh_dict[smaller_mesh_key] = non_overlapping_mesh
+            scaled_mesh_list[smaller_mesh_key] = create_scaled_mesh_by_shift(
+                non_overlapping_mesh, min_gap
+            )
 
-            if larger_scaled_mesh.intersection(smaller_mesh).is_empty:
-                pq_scaled_mesh = ProximityQuery(scaled_mesh)
-                vertices = larger_scaled_mesh.vertices
-                distances = pq_scaled_mesh.signed_distance(vertices)
-                min_distance = max_negative_value(distances.min(), distances.max())
-
-                if min_distance is not None:
-                    expansion_size_shift = -min_distance
-                    scaled_mesh = create_scaled_mesh_to_shift(
-                        scaled_mesh, expansion_size_shift
-                    )
-                    scaled_mesh = create_scaled_mesh_to_volume(
-                        smaller_mesh, scaled_mesh.volume
-                    )
-                else:
-                    scaled_mesh = Trimesh(vertices=[], faces=[])
-            else:
-                scaled_mesh = Trimesh(vertices=[], faces=[])
-
-        # if not scaled_mesh.is_empty:
-        #     continue
-        # stored_tol = constants.tol.merge
-        # constants.tol.merge = 0.3
-        # cloud = merge_close_vertices(scaled_mesh.vertices)
-        # constants.tol.merge = stored_tol
-        # scaled_mesh = cloud.convex_hull
-        mesh_dict[smaller_mesh_key] = scaled_mesh
         scaled_mesh_key_set.add(smaller_mesh_key)
+
     return list(scaled_mesh_key_set)
 
 
@@ -270,7 +251,7 @@ def repair(file_path, min_gap, merge_tol, min_mesh_volume):
         mesh_list, scaled_mesh_list
     )
     print(
-        f"\t> Found {len(intersected_pairs_set)} pairs scaled meshes with possible intersections or close to each other \n"
+        f"\t> Found {len(intersected_pairs_set)} pairs of meshes with possible intersections or close to each other \n"
     )
 
     print("Filter out fully contained mesh by another larger mesh")

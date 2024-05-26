@@ -30,4 +30,4 @@ def export_mesh_list(mesh_list, file_path, file_name_prefix):
     combined_filtered_mesh = util.concatenate(mesh_list)
     export_path = add_prefix_if_exists(file_path, file_name_prefix)
     combined_filtered_mesh.export(export_path)  # type: ignore
-    print("exported to " + file_path)
+    print("exported to " + export_path)
