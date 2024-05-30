@@ -53,7 +53,7 @@ def sew_compound_faces(faces_compound: TopoDS_Compound) -> TopoDS_Shape:
     return sewed_shell
 
 
-def convert_shape_to_mesh(shape, linear_deflection=1, angular_deflection=1):
+def convert_shape_to_mesh(shape, linear_deflection=0.01, angular_deflection=0.5):
     mesh = BRepMesh_IncrementalMesh(
         shape,
         linear_deflection,
