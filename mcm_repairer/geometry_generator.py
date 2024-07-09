@@ -9,6 +9,11 @@ from OCC.Core.gp import gp_Pnt
 from OCC.Core.TopoDS import TopoDS_Compound
 from OCC.Core.TopoDS import TopoDS_Shape, TopoDS_Solid, topods_Shell
 from OCC.Core.BRepMesh import BRepMesh_IncrementalMesh
+from OCC.Core.TopExp import TopExp_Explorer
+from OCC.Core.TopAbs import TopAbs_FACE
+from OCC.Core.TopoDS import topods_Face
+from OCC.Core.BRep import BRep_Tool
+from OCC.Core.TopLoc import TopLoc_Location
 
 
 def create_faces_from_polygons(
@@ -76,3 +81,32 @@ def create_compound(shape_list):
     for solid in shape_list:
         builder.Add(compound, solid)
     return compound
+
+
+def extract_vertices_and_faces_from_mesh(shape):
+    vertices = []
+    faces = []
+
+    exp = TopExp_Explorer(shape, TopAbs_FACE)
+    while exp.More():
+        face = topods_Face(exp.Current())
+        triangulation = BRep_Tool.Triangulation(face, TopLoc_Location())
+
+        if triangulation is None:
+            exp.Next()
+            continue
+
+        # Extract vertices
+        for i in range(1, triangulation.NbNodes() + 1):
+            node = triangulation.Node(i)
+            vertices.append([node.X(), node.Y(), node.Z()])
+
+        # Extract faces
+        for i in range(1, triangulation.NbTriangles() + 1):
+            triangle = triangulation.Triangle(i)
+            n1, n2, n3 = triangle.Get()
+            faces.append([n1 - 1, n2 - 1, n3 - 1])  # 0-based indexing for trimesh
+
+        exp.Next()
+
+    return vertices, faces

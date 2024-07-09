@@ -145,18 +145,18 @@ def trim(
 
     # Todo: cut inner_surface using hollow shape to ensure gap or you can scale down meshes
 
-    export_mesh_list(
-        fully_contained_meshes + inner_surface_meshes,
-        sample_file_path,
-        "trim_1_result_",
-    )
-
     # cut outer surface meshes using the container
     shapes_compound = merge_meshes_surfaces_with_target_mesh(
         container, outer_surface_meshes, sample_file_path, container_file_path
     )  # type: ignore
-    f = add_prefix_if_exists(sample_file_path, prefix="trim_2_result_")
+    f = add_prefix_if_exists(sample_file_path, prefix="trim_1_result_")
     export_to_stl(shapes_compound, f)
+
+    export_mesh_list(
+        fully_contained_meshes + inner_surface_meshes,
+        sample_file_path,
+        "trim_2_result_",
+    )
 
     # ensure:
     # minimum gap between meshes and the container
